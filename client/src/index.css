@@ -1,0 +1,184 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@layer base {
+  :root {
+    /* Finance precision palette — cool slate with teal accent */
+    --background: 220 14% 7%;
+    --foreground: 210 20% 92%;
+
+    --card: 220 13% 10%;
+    --card-foreground: 210 20% 92%;
+
+    --popover: 220 13% 10%;
+    --popover-foreground: 210 20% 92%;
+
+    --primary: 185 84% 42%;
+    --primary-foreground: 220 14% 7%;
+
+    --secondary: 220 10% 16%;
+    --secondary-foreground: 210 15% 75%;
+
+    --muted: 220 10% 14%;
+    --muted-foreground: 215 12% 52%;
+
+    --accent: 185 84% 42%;
+    --accent-foreground: 220 14% 7%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 220 10% 17%;
+    --input: 220 10% 16%;
+    --ring: 185 84% 42%;
+
+    --radius: 0.5rem;
+
+    /* Chart colors */
+    --chart-1: 185 84% 42%;
+    --chart-2: 142 71% 45%;
+    --chart-3: 0 72% 51%;
+    --chart-4: 40 80% 50%;
+    --chart-5: 270 70% 60%;
+
+    /* Sidebar (unused but expected by shadcn) */
+    --sidebar: 220 13% 9%;
+    --sidebar-foreground: 210 20% 92%;
+    --sidebar-border: 220 10% 17%;
+    --sidebar-ring: 185 84% 42%;
+    --sidebar-primary: 185 84% 42%;
+    --sidebar-primary-foreground: 220 14% 7%;
+    --sidebar-accent: 220 10% 16%;
+    --sidebar-accent-foreground: 210 15% 75%;
+
+    /* Semantic */
+    --color-up: 142 71% 45%;       /* green — yield rising = bad for borrowers */
+    --color-down: 0 72% 51%;       /* red — yield falling = good for borrowers */
+    --color-neutral: 215 12% 52%;
+    --color-lock: 0 72% 51%;
+    --color-float: 142 71% 45%;
+    --color-accent: 185 84% 42%;
+
+    /* Fonts */
+    --font-body: 'Inter', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+  }
+
+  /* Always dark — this is a trading/finance tool */
+  html {
+    color-scheme: dark;
+  }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    margin: 0;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #root {
+    height: 100%;
+  }
+
+  /* Tabular numbers everywhere in this app */
+  * {
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+}
+
+@layer components {
+  .metric-value {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+
+  .badge-up {
+    @apply text-xs font-semibold px-2 py-0.5 rounded;
+    background: hsl(142 71% 45% / 0.15);
+    color: hsl(142 71% 55%);
+  }
+
+  .badge-down {
+    @apply text-xs font-semibold px-2 py-0.5 rounded;
+    background: hsl(0 72% 51% / 0.15);
+    color: hsl(0 72% 65%);
+  }
+
+  .badge-neutral {
+    @apply text-xs font-semibold px-2 py-0.5 rounded;
+    background: hsl(215 12% 52% / 0.15);
+    color: hsl(215 12% 65%);
+  }
+
+  .data-card {
+    @apply rounded-lg border;
+    background: hsl(var(--card));
+    border-color: hsl(var(--border));
+  }
+
+  .section-label {
+    @apply text-xs font-semibold uppercase tracking-widest;
+    color: hsl(var(--muted-foreground));
+    letter-spacing: 0.1em;
+  }
+
+  .yield-bar {
+    height: 3px;
+    border-radius: 2px;
+    background: hsl(var(--primary));
+    transition: width 0.6s ease;
+  }
+
+  .pulse-dot {
+    @apply inline-block w-2 h-2 rounded-full;
+    background: hsl(142 71% 45%);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  .pulse-dot.stale {
+    background: hsl(var(--muted-foreground));
+    animation: none;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.85); }
+  }
+
+  /* Scrollable main area */
+  .main-scroll {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  /* Grid layout */
+  .dashboard-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(12, 1fr);
+  }
+}
+
+/* Recharts custom styles */
+.recharts-cartesian-axis-tick-value {
+  font-family: var(--font-mono) !important;
+  font-size: 11px !important;
+  fill: hsl(215 12% 52%) !important;
+}
+
+.recharts-tooltip-wrapper {
+  outline: none !important;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: hsl(220 10% 25%); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(220 10% 35%); }
