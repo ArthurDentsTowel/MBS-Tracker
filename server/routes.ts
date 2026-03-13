@@ -216,6 +216,76 @@ async function getHistoricalData(days = 90) {
   }
 }
 
+// ─── Moving.com Editorial Lock Bias ──────────────────────────────────────────
+
+interface EditorialRecommendation {
+  label: string;
+  bias: "lock" | "float" | "neutral";
+  text: string;
+}
+
+interface EditorialBias {
+  headline: string | null;
+  date: string | null;
+  recommendations: EditorialRecommendation[];
+  sourceUrl: string;
+}
+
+async function getMovingComBias(): Promise<EditorialBias | null> {
+  try {
+    const url = "https://www.moving.com/mortgage/mortgage-market-commentary.asp";
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    // Site uses Windows-1252/latin-1 encoding
+    const buf = await res.arrayBuffer();
+    const html = new TextDecoder("windows-1252").decode(buf);
+
+    // Extract date from meta description or article text
+    const dateMatch =
+      html.match(/commentary.*?for\s+((?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},\s+\d{4})/i) ??
+      html.match(/\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},\s+\d{4}/i) ??
+      html.match(/\b(\d{1,2}\/\d{1,2}\/\d{4})\b/);
+    const date = dateMatch ? dateMatch[1] ?? dateMatch[0] : null;
+
+    // Extract headline — first <h1> or <h2> tag text
+    const headlineMatch = html.match(/<h[12][^>]*>([\s\S]*?)<\/h[12]>/i);
+    const headline = headlineMatch
+      ? headlineMatch[1].replace(/<[^>]+>/g, "").replace(/&nbsp;/gi, " ").trim()
+      : null;
+
+    // Extract lock/float recommendations
+    // HTML format: <A href="...#Lock...">Lock</A> if my closing were taking place within 7 days...<br>
+    const recommendations: EditorialRecommendation[] = [];
+    const recPattern = /<A[^>]*#(Lock|Float)[^>]*>(?:Lock|Float)<\/A>\s*if my closing were taking place\s*([^<.]+)/gi;
+    const recMatches = Array.from(html.matchAll(recPattern));
+    for (const m of recMatches) {
+      const biasWord = m[1].toLowerCase() as "lock" | "float";
+      const timeframe = m[2].trim().replace(/\s*\.*$/, ""); // e.g. "within 7 days"
+      // Format label: "Within 7 Days", "8–20 Days", etc.
+      const label = timeframe
+        .replace(/between (\d+) and (\d+)/, "$1–$2")
+        .replace(/\b\w/g, (c: string) => c.toUpperCase());
+      recommendations.push({
+        label,
+        bias: biasWord,
+        text: `${biasWord === "lock" ? "Lock" : "Float"} if closing ${timeframe}`,
+      });
+    }
+
+    return { headline, date, recommendations, sourceUrl: url };
+  } catch (e) {
+    console.error("MovingCom bias error:", e);
+    return null;
+  }
+}
+
 // ─── Lock/Float Signal ────────────────────────────────────────────────────────
 
 function computeLockFloatSignal(tnx: { price: number | null; change: number | null } | null) {
@@ -257,11 +327,12 @@ export async function registerRoutes(httpServer: Server, app: Express) {
   // Main market data
   app.get("/api/market", async (_req, res) => {
     try {
-      const [tnx, mbs, curve, couponPrices] = await Promise.all([
+      const [tnx, mbs, curve, couponPrices, editorialBias] = await Promise.all([
         getTNXQuote(),
         getMBSETFs(),
         getYieldCurve(),
         getMNDCouponPrices(),
+        getMovingComBias(),
       ]);
 
       res.json({
@@ -271,6 +342,7 @@ export async function registerRoutes(httpServer: Server, app: Express) {
         curve,
         couponPrices,
         lockFloatSignal: computeLockFloatSignal(tnx),
+        ...(editorialBias ? { editorialBias } : {}),
       });
     } catch (e: any) {
       console.error("/api/market error:", e);

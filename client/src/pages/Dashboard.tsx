@@ -30,6 +30,12 @@ interface MarketData {
   } | null;
   couponPrices: Record<string, number>;
   lockFloatSignal: { signal: "LOCK" | "FLOAT" | "NEUTRAL"; reason: string; strength: number };
+  editorialBias?: {
+    headline: string | null;
+    date: string | null;
+    recommendations: { label: string; bias: "lock" | "float" | "neutral"; text: string }[];
+    sourceUrl: string;
+  };
 }
 
 interface HistoryPoint {
@@ -162,7 +168,13 @@ function YieldCurveChart({ curve }: { curve: MarketData["curve"] }) {
 }
 
 // Lock/Float signal card
-function LockFloatCard({ signal }: { signal: MarketData["lockFloatSignal"] }) {
+function LockFloatCard({
+  signal,
+  editorialBias,
+}: {
+  signal: MarketData["lockFloatSignal"];
+  editorialBias?: MarketData["editorialBias"];
+}) {
   const isLock = signal.signal === "LOCK";
   const isFloat = signal.signal === "FLOAT";
 
@@ -212,6 +224,56 @@ function LockFloatCard({ signal }: { signal: MarketData["lockFloatSignal"] }) {
           </div>
         </div>
       </div>
+
+      {editorialBias && editorialBias.recommendations.length > 0 && (
+        <>
+          <div className="border-t" style={{ borderColor: "hsl(220 10% 20%)" }} />
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <a
+                href={editorialBias.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-medium hover:underline"
+                style={{ color: "hsl(var(--muted-foreground))" }}
+              >
+                moving.com ↗
+              </a>
+              {editorialBias.date && (
+                <span className="text-xs" style={{ color: "hsl(215 12% 40%)" }}>
+                  {editorialBias.date}
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {editorialBias.recommendations.map((rec, i) => {
+                const badgeColor =
+                  rec.bias === "lock"
+                    ? { bg: "hsl(0 72% 51% / 0.15)", text: "hsl(0 72% 65%)", border: "hsl(0 72% 51% / 0.3)" }
+                    : rec.bias === "float"
+                    ? { bg: "hsl(142 71% 45% / 0.15)", text: "hsl(142 71% 55%)", border: "hsl(142 71% 45% / 0.3)" }
+                    : { bg: "hsl(220 10% 18%)", text: "hsl(215 12% 52%)", border: "hsl(220 10% 25%)" };
+                // Shorten label: "Locking Today" → "Today", "Locking This Week" → "This Week"
+                const shortLabel = rec.label.replace(/^lock(?:ing)?\s*/i, "").trim() || rec.label;
+                return (
+                  <div
+                    key={i}
+                    title={rec.text}
+                    className="text-xs px-2 py-1 rounded"
+                    style={{
+                      background: badgeColor.bg,
+                      color: badgeColor.text,
+                      border: `1px solid ${badgeColor.border}`,
+                    }}
+                  >
+                    {shortLabel || rec.label}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -376,7 +438,7 @@ export default function Dashboard() {
           {/* ─── Lock / Float Signal ─── */}
           <div className="col-span-12 md:col-span-4">
             {market ? (
-              <LockFloatCard signal={market.lockFloatSignal} />
+              <LockFloatCard signal={market.lockFloatSignal} editorialBias={market.editorialBias} />
             ) : (
               <div className="data-card p-4 h-full flex items-center justify-center">
                 <div className="h-20 w-full rounded animate-pulse" style={{ background: "hsl(var(--muted))" }} />
